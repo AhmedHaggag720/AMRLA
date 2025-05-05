@@ -253,5 +253,5 @@ app.listen(port, () => {
 });
 
 // Refresh tokens every 55 minutes and fetch listings every 6 seconds
-setInterval(getAccessToken, 55 * 60 * 1000);
-setInterval(() => fetchListings("Auto"), 6000);
+// setInterval(getAccessToken, 55 * 60 * 1000);
+// setInterval(() => fetchListings("Auto"), 6000);
