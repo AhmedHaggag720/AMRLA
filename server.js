@@ -8,8 +8,6 @@ const logToFile = require("./logger");
 // === Telegram Notifier ===
 function sendTelegramMessage(text) {
   const token = "7640388136:AAGv6v8ID6ckN_MPkVXqxMG-fySCr09bsbw"; // Replace with your bot token
-  //hamada 1874484638
-  //amr 8174788006
   const chatId = "8174788006"; // Replace with your chat ID
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
@@ -28,6 +26,8 @@ function sendTelegramMessage(text) {
 
 let resAccessToken = null;
 let listings = null;
+let timeoutId = null;
+let lastRequestTime = null;
 
 app.use(express.json());
 
@@ -143,7 +143,6 @@ function getAccessToken() {
 }
 
 // === Unified Fetch Listings Function ===
-// === Unified Fetch Listings Function ===
 function fetchListings(logPrefix = "Auto") {
   if (!resAccessToken) {
     return logToFile("No access token. Skipping listings fetch.");
@@ -196,7 +195,7 @@ function fetchListings(logPrefix = "Auto") {
           return Object.values(obj).some((value) => containsWord(value, word));
         return false;
       }
-//hi
+
       const matches = listings.filter((item) => containsWord(item, "WORLDPAC"));
       const matchLog =
         `${logPrefix} listing match:\n` + JSON.stringify(matches, null, 2);
@@ -230,6 +229,23 @@ app.listen(port, () => {
   getAccessToken();
 });
 
-// Refresh tokens every 55 minutes and fetch listings every 6 seconds
+// Refresh tokens every 55 minutes
 setInterval(getAccessToken, 55 * 60 * 1000);
-setInterval(() => fetchListings("Auto"), 6000);
+
+// Handle request and delay fetchListings by 6 minutes after the last request
+app.post("/request", (req, res) => {
+  // Update the last request time
+  lastRequestTime = Date.now();
+
+  // Clear the existing timeout (if any)
+  if (timeoutId) {
+    clearTimeout(timeoutId);
+  }
+
+  // Set the timeout to fetch listings after 6 minutes
+  timeoutId = setTimeout(() => {
+    fetchListings("Auto");
+  }, 6 * 60 * 1000); // 6 minutes
+
+  res.json({ message: "Request received, fetch will be triggered after 6 minutes" });
+});
