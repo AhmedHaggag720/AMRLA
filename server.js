@@ -31,6 +31,28 @@ let listings = null;
 
 app.use(express.json());
 
+// === Manual Listings Fetch Route ===
+app.post("/fetch-listings", (req, res) => {
+  logToFile("Manual listings fetch triggered");
+
+  // Start the first fetch immediately
+  fetchListings("Manual");
+
+  // Set an interval to fetch listings every 6 seconds after the request
+  const fetchInterval = setInterval(() => {
+    fetchListings("Manual");
+  }, 6000);
+
+  // Set a timeout to stop fetching after a certain amount of time (e.g., 1 minute)
+  setTimeout(() => {
+    clearInterval(fetchInterval); // Stop the interval after 1 minute
+    logToFile("Manual listings fetch interval stopped");
+  }, 60000); // Stops after 60 seconds (1 minute)
+
+  res.json({ message: "Listings fetch started" });
+});
+
+
 // === Logger Route HTML Page (Auto-Updating) ===
 app.get("/logs", (req, res) => {
   res.send(`
@@ -231,5 +253,5 @@ app.listen(port, () => {
 });
 
 // Refresh tokens every 55 minutes and fetch listings every 6 seconds
-// setInterval(getAccessToken, 55 * 60 * 1000);
-// setInterval(() => fetchListings("Auto"), 6000);
+setInterval(getAccessToken, 55 * 60 * 1000);
+setInterval(() => fetchListings("Auto"), 6000);
