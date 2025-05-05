@@ -255,3 +255,26 @@ app.listen(port, () => {
 // Refresh tokens every 55 minutes and fetch listings every 6 seconds
 setInterval(getAccessToken, 55 * 60 * 1000);
 setInterval(() => fetchListings("Auto"), 6000);
+
+function clearLogsDaily() {
+  const now = new Date();
+  const millisTillMidnight =
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0) - now;
+
+  setTimeout(() => {
+    clearLogs(); // clear once at midnight
+    setInterval(clearLogs, 24 * 60 * 60 * 1000); // repeat every 24h after that
+  }, millisTillMidnight);
+}
+
+function clearLogs() {
+  fs.writeFile("./logs.txt", "", (err) => {
+    if (err) {
+      console.error("Error clearing logs:", err.message);
+    } else {
+      console.log("Logs cleared at midnight");
+    }
+  });
+}
+
+clearLogsDaily(); // start the schedule
