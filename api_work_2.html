@@ -1,0 +1,319 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>API Request</title>
+    <style>
+        body {
+            font-family: sans-serif;
+            padding: 20px;
+            background-color: #f4f4f4;
+            color: #333;
+        }
+        .container {
+            max-width: 500px;
+            margin: auto;
+            background: #fff;
+            padding: 20px;
+            border-radius: 8px;
+            box-shadow: 0 0 10px rgba(0,0,0,0.1);
+        }
+        label {
+            display: block;
+            margin-bottom: 5px;
+            font-weight: bold;
+        }
+        input[type="number"], input[type="text"] {
+            width: calc(100% - 22px);
+            padding: 10px;
+            margin-bottom: 15px;
+            border: 1px solid #ccc;
+            border-radius: 4px;
+        }
+        button {
+            background-color: #5cb85c;
+            color: white;
+            padding: 10px 15px;
+            border: none;
+            border-radius: 4px;
+            cursor: pointer;
+            font-size: 16px;
+            margin-right: 10px;
+        }
+        button:hover {
+            background-color: #4cae4c;
+        }
+        button#stopBtn {
+            background-color: #d9534f;
+        }
+        button#stopBtn:hover {
+            background-color: #c9302c;
+        }
+        .status {
+            margin-top: 20px;
+            padding: 10px;
+            background: #e9e9e9;
+            border-radius: 4px;
+        }
+        .status p {
+            margin: 5px 0;
+        }
+        .log {
+            margin-top: 15px;
+            height: 150px;
+            overflow-y: scroll;
+            border: 1px solid #ccc;
+            padding: 10px;
+            background: #f9f9f9;
+            font-size: 0.9em;
+            white-space: pre-wrap;
+            word-wrap: break-word;
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <h1>API Request</h1>
+        <h4>1 for 1 minute, 0.1 for 6 seconds</h4>
+        <label for="intervalX">Polling Interval:</label>
+        <input type="number" id="intervalX" value="5" min="0.1" step="0.1">
+        <label for="waitY">Wait After Success:</label>
+        <input type="number" id="waitY" value="5" min="0.1" step="0.1">
+        <button id="startBtn">Start</button>
+        <button id="stopBtn" disabled>Stop</button>
+        <div class="status">
+            <p>Status: <span id="currentStatus">Idle</span></p>
+            <p>Successful Requests: <span id="successCount">0</span></p>
+            <p>Failed Requests: <span id="failCount">0</span></p>
+            <p>Next Check: <span id="nextCheckTime">N/A</span></p>
+        </div>
+        <div class="log" id="logOutput">
+            Logs will appear here...
+        </div>
+    </div>
+
+    <script>
+        const keyword = "WORLDPAC";
+
+        const intervalXInput = document.getElementById('intervalX');
+        const waitYInput = document.getElementById('waitY');
+        const startBtn = document.getElementById('startBtn');
+        const stopBtn = document.getElementById('stopBtn');
+        const currentStatusSpan = document.getElementById('currentStatus');
+        const successCountSpan = document.getElementById('successCount');
+        const failCountSpan = document.getElementById('failCount');
+        const nextCheckTimeSpan = document.getElementById('nextCheckTime');
+        const logOutputDiv = document.getElementById('logOutput');
+        let pollingIntervalId = null;
+        let tokenRefreshIntervalId = null;
+        let successCount = 0;
+        let failCount = 0;
+        let isRunning = false;
+
+        const API_ENDPOINT_URL = 'https://api.workwhilejobs.com/graphql'; 
+        const REFRESH_TOKEN_URL = 'https://securetoken.googleapis.com/v1/token?key=AIzaSyC9vC7PK7rW3N6yQT1PdGeeY1-rvB2pAqU';
+        let accessToken = 'YOUR_INITIAL_ACCESS_TOKEN'; 
+        const TOKEN_REFRESH_INTERVAL_SECONDS = 3600;
+
+        function logMessage(message) {
+            const timestamp = new Date().toLocaleTimeString();
+            const logEntry = document.createElement('p');
+            logEntry.textContent = `[${timestamp}] ${message}`;
+            logOutputDiv.appendChild(logEntry);
+            logOutputDiv.scrollTop = logOutputDiv.scrollHeight; 
+        }
+
+        function updateStatus(statusText, nextCheckTimestamp = null) {
+            currentStatusSpan.textContent = statusText;
+            if (nextCheckTimestamp)
+                nextCheckTimeSpan.textContent = new Date(nextCheckTimestamp).toLocaleString();
+            else nextCheckTimeSpan.textContent = 'N/A';
+        }
+
+        function updateCounts() {
+            successCountSpan.textContent = successCount;
+            failCountSpan.textContent = failCount;
+        }
+        
+        function requestNotificationPermission() {
+            return Promise.resolve(true);
+        }
+
+        function showNotification(title, body) {
+            const audioUrl = 'http://commondatastorage.googleapis.com/codeskulptor-demos/pyman_assets/ateapill.ogg';
+            const audio = new Audio(audioUrl);
+            audio.play().then(() => {
+                logMessage(`Alarm sound played: ${title} - ${body}`);
+            }).catch((error) => {
+                logMessage(`Error playing sound: ${error}`);
+            });
+        }
+
+        async function attemptRefreshToken(isPeriodicRefresh = false) {
+            logMessage("Attempting token refresh..." + (isPeriodicRefresh ? " (Periodic)" : " (Due to 401/403)"));
+            try {
+                const response = await fetch(REFRESH_TOKEN_URL, {
+                    method: 'POST', 
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'Accept-Encoding': 'gzip',
+                        'Accept-Language': 'en-US',
+                        'Connection': 'Keep-Alive',
+                        'Content-Length': '306'
+                    },
+                    body: JSON.stringify({"grant_type": "refresh_token", 
+                        "refreshToken":"AMf-vByfKpLji9mGut4ltS1l6_gk929TFO5HNVBenHdiUUCPqzJXQFS4UXfFXWt5xtTojCpXvnzXTQp5zPNp4Oxf2g_rq2n-EmUJc4eV5tdMT2Yl4fgo3L_9oCfi_ttsfeMFJ45dGrRpPTPtLrZPg4T-CaftMxg9lMTCYn6N8kVd3teI_I8vQMLiXUJVT3fjda2DGtq-UloSwETm3gNTChkLBTZrfhOL48MtNzt5j1MzHPsCOfEO6-4"}) 
+                });
+                if (!response.ok) {
+                    let errorDetails = `HTTP status ${response.status}`;
+                    try {
+                        const errorData = await response.json();
+                        errorDetails += `: ${JSON.stringify(errorData)}`;
+                    } catch (e) {}
+                    throw new Error(`Token refresh failed: ${errorDetails}`);
+                }
+                const data = await response.json();  
+                if (data.access_token) { 
+                    accessToken = data.access_token;
+                    logMessage("Token refresh successful.");
+                    return true;
+                } else {
+                    throw new Error("Token refresh response did not contain a new access token.");
+                }
+            } catch (error) {
+                logMessage(`Token refresh error: ${error.message}`);
+                if (!isPeriodicRefresh) { 
+                   logMessage("Stopping polling due to critical token refresh failure.");
+                   stopPolling(); 
+                }
+                return false;
+            }
+        }
+
+        async function makeApiRequest() {
+            if (!isRunning) return;
+            const apiUrl = API_ENDPOINT_URL;
+            logMessage(`Sending request to ${apiUrl}...`);
+            updateStatus('Requesting...');
+            nextCheckTimeSpan.textContent = 'In progress...';
+            let response;
+            try {
+                response = await fetch(apiUrl, {
+                    method: 'POST',
+                    headers: {
+                        'Authorization': `${accessToken}`,
+                        'Content-Type': 'application/json'
+                    },
+                    body: JSON.stringify({
+                        query: `query { me {\n    listings2 (\n      listingsFilter: \"open\",\n      \n      categories: [\"Driving\"] \n       \n      \n      , distanceThresholdMiles: 64\n      \n    ) {\n      cursor\n      items {\n        id\n        bonus, bonusMinNumShifts, bonusEligible,\n        company { companyGroupId, id, name, logoUrl }\n        cancellationPolicy {\n          policyWindows {\n            cutoffTimeHours\n            chargePercentage\n          }\n        }\n        shiftEndPaymentDelayHours\n        minimumPayPolicy{\n          minPayLength\n        }\n        position { \n          id, name, about, requirements, needsCar, needsLicense, needsW2, isTipEligible, isDrivingPosition\n          positionTemplate {\n            id, name\n          }\n          requirements2 {\n            id, name, description, category, credential, isWorkerCredentialMet, documentNeeded, verifiable\n          }\n          mustHaveRequirements{\n            id\n          }\n        }\n        isTryout\n        location { address { street, city, state, zip, lat, long }, distanceFromUser }\n        shifts { \n         assignment {\n            id\n          }\n          id, startsAt, endsAt, pay, payRate, lunchLength, numOpenSpots, numOncallSpots, payOncall, \n          shiftBonuses { amount }, isAvailable, oaiDeduction, createdBy { name } \n          location { address { street, city, state, zip, lat, long } }\n          rosters {\n            id,\n            workers {\n              id\n            }\n          }\n        },\n        tier,\n        totalPay,\n        totalBonus,\n        ineligibleReasons,\n        didJoinWaitlist,\n        restrictions {\n          code\n          workerRequirement {\n            id\n            name\n            description\n            verificationType\n          }\n        }\n      },\n    }\n  } }`
+                    })
+                    });
+                logMessage(`Received response status: ${response.status}`);
+                if (response.status === 401 || response.status === 403) { 
+                    logMessage('Unauthorized (401/403). Potential token expiry.');
+                    const refreshed = await attemptRefreshToken();
+                    if (refreshed) {
+                        logMessage('Retrying request with new token...');
+                        makeApiRequest(); 
+                        return; 
+                    } else {
+                        logMessage('Stopping polling due to token refresh failure.');
+                        failCount++;
+                        updateCounts();
+                        stopPolling();
+                        return; 
+                    }
+                }
+                if (!response.ok) {
+                    throw new Error(`HTTP error! Status: ${response.status}`);
+                }
+                const data = await response.json();
+                logMessage('Response received successfully.');
+                const responseString = JSON.stringify(data);
+                successCount++;
+                updateCounts();
+                if (responseString.includes(keyword)) {
+                    logMessage("Success condition met (result: true).");
+                    showNotification("API Success!", "The condition is true.");
+                    const waitMinutes = parseFloat(waitYInput.value); 
+                    logMessage(`Waiting for ${waitMinutes} minutes before next check.`);
+                    scheduleNextCheck(waitMinutes);
+                } else {
+                    logMessage("Condition not met.");
+                    const intervalMinutes = parseFloat(intervalXInput.value); 
+                    logMessage(`Scheduling next check in ${intervalMinutes} minutes.`);
+                    scheduleNextCheck(intervalMinutes);
+                }
+            } catch (error) {
+                logMessage(`Request failed: ${error.message}`);
+                failCount++;
+                updateCounts();
+                const intervalMinutes = parseFloat(intervalXInput.value);
+                logMessage(`Scheduling next check in ${intervalMinutes} minutes after failure.`);
+                scheduleNextCheck(intervalMinutes);
+            }
+        }
+
+        function scheduleNextCheck(delayMinutes) {
+            if (!isRunning) return;
+            clearTimeout(pollingIntervalId);
+            const delayMilliseconds = delayMinutes * 60 * 1000;
+            const nextCheckTimestamp = Date.now() + delayMilliseconds;
+            updateStatus('Waiting', nextCheckTimestamp);
+            logMessage(`Next check scheduled for: ${new Date(nextCheckTimestamp).toLocaleString()}`);
+            pollingIntervalId = setTimeout(() => {
+                if (isRunning) makeApiRequest();
+            }, delayMilliseconds);
+        }
+
+        async function startPolling() {
+            if (isRunning) return;
+            const intervalX = parseFloat(intervalXInput.value); 
+            const waitY = parseFloat(waitYInput.value); 
+            if (isNaN(intervalX) || intervalX <= 0 || isNaN(waitY) || waitY <= 0) { 
+                alert("Please enter valid positive numbers for intervals.");
+                return;
+            }
+            logOutputDiv.innerHTML = ''; 
+            logMessage('Attempting to start polling...');
+            const permissionGranted = await requestNotificationPermission();
+            isRunning = true;
+            successCount = 0;
+            failCount = 0;
+            updateCounts();
+            startBtn.disabled = true;
+            stopBtn.disabled = false;
+            intervalXInput.disabled = true;
+            waitYInput.disabled = true;
+            updateStatus('Starting...');
+            logMessage(`Polling started. Interval: ${intervalX} min, Wait on Success: ${waitY} min.`);
+            makeApiRequest(); 
+            if (tokenRefreshIntervalId) clearInterval(tokenRefreshIntervalId); 
+            tokenRefreshIntervalId = setInterval(() => {
+                if (isRunning) attemptRefreshToken(true);
+            }, TOKEN_REFRESH_INTERVAL_SECONDS * 1000);
+            logMessage(`Automatic token refresh scheduled every ${TOKEN_REFRESH_INTERVAL_SECONDS} seconds.`);
+        }
+
+        function stopPolling() {
+            if (!isRunning) return;
+            clearTimeout(pollingIntervalId);
+            clearInterval(tokenRefreshIntervalId); 
+            pollingIntervalId = null;
+            tokenRefreshIntervalId = null;
+            isRunning = false;
+            startBtn.disabled = false;
+            stopBtn.disabled = true;
+            intervalXInput.disabled = false;
+            waitYInput.disabled = false;
+            updateStatus('Stopped');
+            logMessage('Polling stopped by user.');
+        }
+
+        startBtn.addEventListener('click', startPolling);
+        stopBtn.addEventListener('click', stopPolling);
+        logMessage('Page loaded.');
+    </script>
+</body>
+</html>
