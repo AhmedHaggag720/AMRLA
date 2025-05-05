@@ -8,7 +8,9 @@ const logToFile = require("./logger");
 // === Telegram Notifier ===
 function sendTelegramMessage(text) {
   const token = "7640388136:AAGv6v8ID6ckN_MPkVXqxMG-fySCr09bsbw"; // Replace with your bot token
-  const chatId = "1874484638"; // Replace with your chat ID
+  //hamada 1874484638
+  //amr 8174788006
+  const chatId = "8174788006"; // Replace with your chat ID
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
   axios
@@ -195,7 +197,7 @@ function fetchListings(logPrefix = "Auto") {
         return false;
       }
 //hi
-      const matches = listings.filter((item) => containsWord(item, "WORLDPAC"));
+      const matches = listings.filter((item) => containsWord(item, "2025-05-12T18:00:00+00:00"));
       const matchLog =
         `${logPrefix} listing match:\n` + JSON.stringify(matches, null, 2);
       logToFile(matchLog);
