@@ -219,7 +219,7 @@ function fetchListings(logPrefix = "Auto") {
         return false;
       }
 //hi
-      const matches = listings.filter((item) => containsWord(item,"WORLDPAC"));
+      const matches = listings.filter((item) => containsWord(item,"459848"));
       const matchLog =
         `${logPrefix} listing match:\n` + JSON.stringify(matches, null, 2);
       logToFile(matchLog);
@@ -253,5 +253,5 @@ app.listen(port, () => {
 });
 
 // Refresh tokens every 55 minutes and fetch listings every 6 seconds
-// setInterval(getAccessToken, 55 * 60 * 1000);
-// setInterval(() => fetchListings("Auto"), 6000);
+setInterval(getAccessToken, 55 * 60 * 1000);
+setInterval(() => fetchListings("Auto"), 6000);
