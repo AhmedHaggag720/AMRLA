@@ -219,7 +219,7 @@ function fetchListings(logPrefix = "Auto") {
         return false;
       }
 //hi
-      const matches = listings.filter((item) => containsWord(item,"459848"));
+      const matches = listings.filter((item) => containsWord(item,"Jitsu"));
       const matchLog =
         `${logPrefix} listing match:\n` + JSON.stringify(matches, null, 2);
       logToFile(matchLog);
