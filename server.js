@@ -194,7 +194,7 @@ function fetchListings(logPrefix = "Auto") {
           return Object.values(obj).some((value) => containsWord(value, word));
         return false;
       }
-
+//hi
       const matches = listings.filter((item) => containsWord(item, "WORLDPAC"));
       const matchLog =
         `${logPrefix} listing match:\n` + JSON.stringify(matches, null, 2);
