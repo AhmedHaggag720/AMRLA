@@ -1,3 +1,4 @@
+ssh -i "amr.pem" ec2-user@ec2-18-189-13-214.us-east-2.compute.amazonaws.com
 cd AMRLA/
 git pull origin main
 pm2 restart server
