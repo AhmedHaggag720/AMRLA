@@ -247,7 +247,7 @@ function fetchListings(logPrefix = "Auto") {
         return false;
       }
       // Check if any of the listings contain the word 
-      const matches = listings.filter((item) => containsWord(item, "Jitsu"));
+      const matches = listings.filter((item) => containsWord(item, "WORLDPAC"));
 
       // Extract all matched IDs
       const matchesFilter = matches.map((item) => {
@@ -319,7 +319,7 @@ app.listen(port, () => {
   getAccessToken();
 });
 
-// Refresh tokens every 55 minutes and fetch listings every 6 seconds
+// Refresh tokens every 55 minutes and fetch listings every 10 seconds
 setInterval(getAccessToken, 55 * 60 * 1000);
 setInterval(() => fetchListings("Auto"), 10000);
 
