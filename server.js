@@ -10,7 +10,7 @@ function sendTelegramMessage(text) {
   const token = "7640388136:AAGv6v8ID6ckN_MPkVXqxMG-fySCr09bsbw"; // Replace with your bot token
   //hamada 1874484638
   //amr 8174788006
-  const chatId = "8174788006"; // Replace with your chat ID
+  const chatId = "1874484638"; // Replace with your chat ID
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
   axios
