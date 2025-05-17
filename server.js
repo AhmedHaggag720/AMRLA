@@ -17,6 +17,8 @@ function sendTelegramMessage(text) {
     .post(url, {
       chat_id: chatId,
       text: text,
+      parse_mode: "HTML",
+      disable_web_page_preview: true,
     })
     .then(() => {
       logToFile("Telegram message sent");
@@ -52,6 +54,47 @@ app.post("/fetch-listings", (req, res) => {
   res.json({ message: "Listings fetch started" });
 });
 
+app.get("/booknow/:id/:shiftId", async (req, res) => {
+  try {
+    const { id, shiftId } = req.params;
+    const url = `https://api.workwhilejobs.com/v1/me/listing/${id}/accept`;
+
+    const headers = {
+      accept: "application/json",
+      "Accept-Encoding": "gzip",
+      authorization: `${resAccessToken}`,
+      platformos: "android",
+      timezone: "America/Los_Angeles",
+      "User-Agent": "okhttp/4.12.0",
+    };
+
+    const body = {
+      shift_ids: [`${shiftId}`],
+      is_oncall: false,
+      mode: "DRIVING",
+      duration_minutes: 15.45,
+      departure: {
+        street: "3053 West Teranimar Drive",
+        unit: null,
+        zip: "92804",
+        city: "Anaheim",
+        state: "CA",
+        lat: 33.82018,
+        long: -117.99616,
+      },
+    };
+
+    const response = await axios.post(url, body, { headers });
+
+    res.status(200).json({
+      message: "Booking request sent successfully.",
+      data: response.data,
+    });
+  } catch (error) {
+    console.error("Booking request failed:", error.message);
+    res.status(500).json({ error: error.message });
+  }
+});
 
 // === Logger Route HTML Page (Auto-Updating) ===
 app.get("/logs", (req, res) => {
@@ -187,22 +230,7 @@ function fetchListings(logPrefix = "Auto") {
     "User-Agent": "okhttp/4.12.0",
   };
   const body = {
-    query: `query {
-      me {
-        listings2 (
-          listingsFilter: "open",
-          categories: ["Driving"],
-          distanceThresholdMiles: 64
-        ) {
-          items {
-            id
-            company { name }
-            position { name }
-            location { address { city, state } }
-          }
-        }
-      }
-    }`,
+    query: `query { me {\n    listings2 (\n      listingsFilter: \"open\",\n      \n      categories: [\"Driving\"] \n       \n      \n      , distanceThresholdMiles: 64\n      \n    ) {\n      cursor\n      items {\n        id\n        bonus, bonusMinNumShifts, bonusEligible,\n        company { companyGroupId, id, name, logoUrl }\n        cancellationPolicy {\n          policyWindows {\n            cutoffTimeHours\n            chargePercentage\n          }\n        }\n        shiftEndPaymentDelayHours\n        minimumPayPolicy{\n          minPayLength\n        }\n        position { \n          id, name, about, requirements, needsCar, needsLicense, needsW2, isTipEligible, isDrivingPosition\n          positionTemplate {\n            id, name\n          }\n          requirements2 {\n            id, name, description, category, credential, isWorkerCredentialMet, documentNeeded, verifiable\n          }\n          mustHaveRequirements{\n            id\n          }\n        }\n        isTryout\n        location { address { street, city, state, zip, lat, long }, distanceFromUser }\n        shifts { \n         assignment {\n            id\n          }\n          id, startsAt, endsAt, pay, payRate, lunchLength, numOpenSpots, numOncallSpots, payOncall, \n          shiftBonuses { amount }, isAvailable, oaiDeduction, createdBy { name } \n          location { address { street, city, state, zip, lat, long } }\n          rosters {\n            id,\n            workers {\n              id\n            }\n          }\n        },\n        tier,\n        totalPay,\n        totalBonus,\n        ineligibleReasons,\n        didJoinWaitlist,\n        restrictions {\n          code\n          workerRequirement {\n            id\n            name\n            description\n            verificationType\n          }\n        }\n      },\n    }\n  } }`,
   };
 
   axios
@@ -218,15 +246,54 @@ function fetchListings(logPrefix = "Auto") {
           return Object.values(obj).some((value) => containsWord(value, word));
         return false;
       }
-//hi
-      const matches = listings.filter((item) => containsWord(item,"WORLDPAC"));
-      const matchLog =
-        `${logPrefix} listing match:\n` + JSON.stringify(matches, null, 2);
-      logToFile(matchLog);
+      // Check if any of the listings contain the word 
+      const matches = listings.filter((item) => containsWord(item, "Jitsu"));
 
-      // Only send the message if matches were found
+      // Extract all matched IDs
+      const matchesFilter = matches.map((item) => {
+        id = item.id;
+        shift_id = item.shifts?.[0]?.id;
+
+        const originalTime = new Date(item.shifts?.[0]?.startsAt);
+        const adjustedTime = new Date(
+          originalTime.getTime() - 7 * 60 * 60 * 1000
+        );
+
+        // Format: YYYY-MM-DD HH:mm (in UTC-like display)
+        const formattedTime = adjustedTime
+          .toISOString()
+          .replace("T", " ")
+          .substring(0, 16);
+
+        const companyUrl = `http://18.189.13.214:3000/booknow/${id}/${shift_id}`;
+
+        return {
+          name: item.company.name,
+          pay: item.totalPay,
+          hyperlink: `<a href="${companyUrl}">Book Now</a>`,
+          time: formattedTime,
+        };
+      });
+    
+      // Create a readable message for Telegram
+      const matchLogForTelegram =
+        `listing match:\n\n` +
+        matchesFilter
+          .map(
+            (m) =>
+              `Company: ${m.name}\nTime: ${m.time}\nPay: ${m.pay}\n                  ${m.hyperlink}`
+          )
+          .join("\n\n");
+
+      // Log JSON version for debugging
+      logToFile(
+        `${logPrefix} listing match (raw data):\n` +
+          JSON.stringify(matchesFilter, null, 2)
+      );
+
+      // Only send Telegram message if matches were found
       if (matches.length > 0) {
-        sendTelegramMessage(matchLog);
+        sendTelegramMessage(matchLogForTelegram);
       }
     })
     .catch((err) => {
