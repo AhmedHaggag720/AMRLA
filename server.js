@@ -247,7 +247,7 @@ function fetchListings(logPrefix = "Auto") {
           return Object.values(obj).some((value) => containsWord(value, word));
         return false;
       }
-      // Check if any of the listings contain the word 
+      // Check if any of the listings contain the word
       const matches = listings.filter((item) => containsWord(item, "WORLDPAC"));
 
       // Extract all matched IDs
@@ -275,7 +275,21 @@ function fetchListings(logPrefix = "Auto") {
           time: formattedTime,
         };
       });
-    
+
+      matchesFilter.forEach((item) => {
+        if (
+          item.name.toLowerCase().includes("Bellflower") ||
+          item.name.toLowerCase().includes("Habra")
+        ) {
+          const urlMatch = item.hyperlink.match(/href="([^"]+)"/);
+          if (urlMatch) {
+            axios.get(urlMatch[1]);
+            sendTelegramMessage('Booked successfully');
+            logToFile("Booked successfully");
+          }
+        }
+      });
+
       // Create a readable message for Telegram
       const matchLogForTelegram =
         `listing match:\n\n` +
@@ -327,7 +341,8 @@ setInterval(() => fetchListings("Auto"), 10000);
 function clearLogsDaily() {
   const now = new Date();
   const millisTillMidnight =
-    new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0) - now;
+    new Date(now.getFullYear(), now.getMonth(), now.getDate() + 1, 0, 0, 0) -
+    now;
 
   setTimeout(() => {
     clearLogs(); // clear once at midnight
