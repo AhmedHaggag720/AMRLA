@@ -8,24 +8,25 @@ const logToFile = require("./logger");
 // === Telegram Notifier ===
 function sendTelegramMessage(text) {
   const token = "7640388136:AAGv6v8ID6ckN_MPkVXqxMG-fySCr09bsbw"; // Replace with your bot token
-  //hamada 1874484638
-  //amr 8174788006
-  const chatId = "8174788006"; // Replace with your chat ID
+  const chatIds = ["1874484638", "8174788006"]; // Hamada and Amr
+
   const url = `https://api.telegram.org/bot${token}/sendMessage`;
 
-  axios
-    .post(url, {
-      chat_id: chatId,
-      text: text,
-      parse_mode: "HTML",
-      disable_web_page_preview: true,
-    })
-    .then(() => {
-      logToFile("Telegram message sent");
-    })
-    .catch((err) => {
-      console.error("Telegram error:", err.message);
-    });
+  chatIds.forEach((chatId) => {
+    axios
+      .post(url, {
+        chat_id: chatId,
+        text: text,
+        parse_mode: "HTML",
+        disable_web_page_preview: true,
+      })
+      .then(() => {
+        logToFile(`Telegram message sent to ${chatId}`);
+      })
+      .catch((err) => {
+        console.error(`Telegram error for ${chatId}:`, err.message);
+      });
+  });
 }
 
 let resAccessToken = null;
