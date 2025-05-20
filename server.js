@@ -281,7 +281,7 @@ function fetchListings(logPrefix = "Auto") {
           item.name.toLowerCase().includes("Bellflower") ||
           item.name.toLowerCase().includes("Habra")      ||
           item.name.toLowerCase().includes("Huntington") ||
-          item.name.toLowerCase().includes("Glendale") ||
+          item.name.toLowerCase().includes("Hawthorne") ||
           item.name.toLowerCase().includes("Lomita") ||
           item.name.toLowerCase().includes("Ana") ||
           item.name.toLowerCase().includes("Pomona") 
