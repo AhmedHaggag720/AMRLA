@@ -287,11 +287,11 @@ function fetchListings(logPrefix = "Auto") {
           item.name.toLowerCase().includes("Pomona") 
         ) {
           const urlMatch = item.hyperlink.match(/href="([^"]+)"/);
-          // if (urlMatch) {
-          //   axios.get(urlMatch[1]);
-          //   sendTelegramMessage('Booked successfully');
-          //   logToFile("Booked successfully");
-          // }
+          if (urlMatch) {
+            axios.get(urlMatch[1]);
+            sendTelegramMessage('Booked successfully');
+            logToFile("Booked successfully");
+          }
         }
       });
 
