@@ -278,13 +278,14 @@ function fetchListings(logPrefix = "Auto") {
 
       matchesFilter.forEach((item) => {
         if (
-          item.name.toLowerCase().includes("Bellflower") ||
-          item.name.toLowerCase().includes("Habra")      ||
-          item.name.toLowerCase().includes("Huntington") ||
-          item.name.toLowerCase().includes("Hawthorne") ||
-          item.name.toLowerCase().includes("Lomita") ||
-          item.name.toLowerCase().includes("Ana") ||
-          item.name.toLowerCase().includes("Pomona")
+          item.name.toLowerCase().includes("bellflower") ||
+          item.name.toLowerCase().includes("habra")      ||
+          item.name.toLowerCase().includes("huntington") ||
+          item.name.toLowerCase().includes("hawthorne") ||
+          item.name.toLowerCase().includes("lomita") ||
+          item.name.toLowerCase().includes("ana") ||
+          item.name.toLowerCase().includes("pomona") ||
+          item.name.toLowerCase().includes("van") 
         ) {
           const urlMatch = item.hyperlink.match(/href="([^"]+)"/);
           if (urlMatch) {
