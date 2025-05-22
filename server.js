@@ -31,7 +31,7 @@ function sendTelegramMessage(text) {
 
 let resAccessToken = null;
 let listings = null;
-let preferredLocations = JSON.parse(fs.readFileSync("locations.json", "utf-8"));
+let preferredLocations = null;
 
 app.use(express.json());
 
@@ -436,8 +436,9 @@ function fetchListings(logPrefix = "Auto") {
         };
       });
 
-      matchesFilter.forEach((item) => {
+      matchesFilter.forEach(async (item) => {
         const lowerName = item.name.toLowerCase();
+        preferredLocations = await JSON.parse(fs.readFileSync("locations.json", "utf-8"));
         const matchedLocation = preferredLocations.some((loc) =>
           lowerName.includes(loc.toLowerCase())
         );
