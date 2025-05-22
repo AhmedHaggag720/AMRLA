@@ -31,6 +31,7 @@ function sendTelegramMessage(text) {
 
 let resAccessToken = null;
 let listings = null;
+let preferredLocations = JSON.parse(fs.readFileSync("locations.json", "utf-8"));
 
 app.use(express.json());
 
@@ -160,6 +161,165 @@ app.get("/logs", (req, res) => {
   `);
 });
 
+// Read locations from file
+function getPreferredLocations() {
+  try {
+    return JSON.parse(fs.readFileSync("locations.json", "utf-8"));
+  } catch (err) {
+    return [];
+  }
+}
+
+// Save locations to file
+function savePreferredLocations(locations) {
+  fs.writeFileSync("locations.json", JSON.stringify(locations, null, 2));
+}
+
+// GET current preferred locations
+app.get("/locations", (req, res) => {
+  const locations = getPreferredLocations();
+  res.json(locations);
+});
+
+app.post("/locations", (req, res) => {
+  const { locations } = req.body;
+  if (!Array.isArray(locations)) {
+    return res
+      .status(400)
+      .json({ error: "locations must be an array of strings" });
+  }
+  savePreferredLocations(locations);
+  res.json({ success: true, locations });
+});
+
+app.get("/locations-editor", (req, res) => {
+  res.send(`
+    <!DOCTYPE html>
+    <html>
+    <head>
+      <title>Preferred Locations Editor</title>
+      <style>
+        body {
+          margin: 0;
+          font-family: sans-serif;
+          background-color: #f4f4f4;
+          display: flex;
+          flex-direction: column;
+          height: 100vh;
+        }
+        header {
+          background-color: #ffffff;
+          padding: 15px 20px;
+          font-size: 1.4em;
+          font-weight: bold;
+          color: #007acc;
+          border-bottom: 1px solid #ddd;
+        }
+        main {
+          flex: 1;
+          padding: 20px;
+          overflow-y: auto;
+        }
+        .location-item {
+          margin-bottom: 10px;
+        }
+        input[type="text"] {
+          padding: 6px;
+          width: 220px;
+          margin-right: 10px;
+        }
+        button {
+          padding: 6px 12px;
+          background-color: #007acc;
+          color: white;
+          border: none;
+          cursor: pointer;
+          border-radius: 4px;
+        }
+        button:hover {
+          background-color: #005fa3;
+        }
+        #message {
+          margin-top: 10px;
+          color: green;
+        }
+      </style>
+    </head>
+    <body>
+      <header>✅ Preferred Locations</header>
+      <main>
+        <form id="locationsForm">
+          <div id="locationsContainer"></div>
+          <br/>
+          <input type="text" id="newLocation" placeholder="Add new location" />
+          <button type="button" onclick="addLocation()">Add</button>
+          <br/><br/>
+          <button type="submit">Save Preferences</button>
+        </form>
+        <div id="message"></div>
+      </main>
+      <script>
+        let locationsList = [];
+
+        // Load existing locations
+        fetch('/locations')
+          .then(res => res.json())
+          .then(data => {
+            locationsList = data;
+            renderCheckboxes();
+          });
+
+        function renderCheckboxes() {
+          const container = document.getElementById("locationsContainer");
+          container.innerHTML = "";
+          locationsList.forEach((loc, index) => {
+            const div = document.createElement("div");
+            div.className = "location-item";
+            div.innerHTML = \`
+              <label>
+                <input type="checkbox" checked data-index="\${index}" />
+                \${loc}
+              </label>
+            \`;
+            container.appendChild(div);
+          });
+        }
+
+        function addLocation() {
+          const newLoc = document.getElementById("newLocation").value.trim();
+          if (newLoc && !locationsList.includes(newLoc)) {
+            locationsList.push(newLoc);
+            renderCheckboxes();
+            document.getElementById("newLocation").value = "";
+          }
+        }
+
+        document.getElementById("locationsForm").addEventListener("submit", function(e) {
+        e.preventDefault();
+        const checkboxes = document.querySelectorAll('input[type="checkbox"]');
+        const updated = [];
+        checkboxes.forEach((cb, i) => {
+          if (cb.checked) updated.push(locationsList[i]);
+        });
+
+        fetch('/locations', {
+          method: "POST",
+          headers: { "Content-Type": "application/json" },
+          body: JSON.stringify({ locations: updated })
+        })
+        .then(res => res.json())
+        .then(data => {
+          document.getElementById("message").textContent = "✅ Preferences saved!";
+          locationsList = data.locations; // Update local list from response
+          renderCheckboxes();             // Re-render with updated list
+        });
+      });
+      </script>
+    </body>
+    </html>
+  `);
+});
+
 // === Raw Log File Access Route ===
 app.get("/logs/raw", (req, res) => {
   const logFilePath = "./logs.txt";
@@ -277,19 +437,16 @@ function fetchListings(logPrefix = "Auto") {
       });
 
       matchesFilter.forEach((item) => {
-        if (
-          item.name.toLowerCase().includes("bellflower") ||
-          item.name.toLowerCase().includes("habra")      ||
-          item.name.toLowerCase().includes("huntington") ||
-          item.name.toLowerCase().includes("hawthorne") ||
-          item.name.toLowerCase().includes("lomita") ||
-          item.name.toLowerCase().includes("ana") ||
-          item.name.toLowerCase().includes("pomona")
-        ) {
+        const lowerName = item.name.toLowerCase();
+        const matchedLocation = preferredLocations.some((loc) =>
+          lowerName.includes(loc.toLowerCase())
+        );
+
+        if (matchedLocation) {
           const urlMatch = item.hyperlink.match(/href="([^"]+)"/);
           if (urlMatch) {
             axios.get(urlMatch[1]);
-            sendTelegramMessage('Booked successfully');
+            sendTelegramMessage("Booked successfully");
             logToFile("Booked successfully");
           }
         }
