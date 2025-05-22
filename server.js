@@ -284,8 +284,7 @@ function fetchListings(logPrefix = "Auto") {
           item.name.toLowerCase().includes("hawthorne") ||
           item.name.toLowerCase().includes("lomita") ||
           item.name.toLowerCase().includes("ana") ||
-          item.name.toLowerCase().includes("pomona") ||
-          item.name.toLowerCase().includes("van") 
+          item.name.toLowerCase().includes("pomona")
         ) {
           const urlMatch = item.hyperlink.match(/href="([^"]+)"/);
           if (urlMatch) {
