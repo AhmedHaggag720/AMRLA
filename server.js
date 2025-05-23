@@ -420,11 +420,30 @@ function fetchListings(logPrefix = "Auto") {
           originalTime.getTime() - 7 * 60 * 60 * 1000
         );
 
-        // Format: YYYY-MM-DD HH:mm (in UTC-like display)
-        const formattedTime = adjustedTime
-          .toISOString()
-          .replace("T", " ")
-          .substring(0, 16);
+        const days = ["Sun", "Mon", "Tue", "Wed", "Thu", "Fri", "Sat"];
+        const months = [
+          "Jan",
+          "Feb",
+          "Mar",
+          "Apr",
+          "May",
+          "Jun",
+          "Jul",
+          "Aug",
+          "Sep",
+          "Oct",
+          "Nov",
+          "Dec",
+        ];
+
+        const dayName = days[adjustedTime.getUTCDay()];
+        const monthName = months[adjustedTime.getUTCMonth()];
+        const day = String(adjustedTime.getUTCDate()).padStart(2, "0");
+        const year = adjustedTime.getUTCFullYear();
+        const hour = String(adjustedTime.getUTCHours()).padStart(2, "0");
+        const minute = String(adjustedTime.getUTCMinutes()).padStart(2, "0");
+
+        const formattedTime = `${dayName}, ${monthName} ${day}, ${year} ${hour}:${minute}`;
 
         const companyUrl = `http://18.189.13.214:3000/booknow/${id}/${shift_id}`;
 
